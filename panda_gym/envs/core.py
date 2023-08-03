@@ -317,11 +317,17 @@ class RobotTaskEnv(gym.Env):
         self.robot.set_action(action)
         self.sim.step()
         observation = self._get_obs()
-        # An episode is terminated iff the agent has reached the target
-        terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
-        truncated = False
-        info = {"is_success": terminated}
-        reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+        if not self.check_object_constrain():
+            terminated = True  # terminate immediately if constraint is violated 
+            cost = 1
+            truncated = False
+            info = {"is_success": False}
+        else:
+            # An episode is terminated iff the agent has reached the target
+            terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
+            truncated = False
+            info = {"is_success": terminated}
+            reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:

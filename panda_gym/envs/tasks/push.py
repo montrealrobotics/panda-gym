@@ -95,3 +95,7 @@ class Push(Task):
             return -np.array(d > self.distance_threshold, dtype=np.float32)
         else:
             return -d.astype(np.float32)
+
+    def check_object_constrain(self, name='object'):
+        object_position = self.sim.get_base_position(name)
+        return (object_position > self.obj_range_low) and (object_position < self.obj_range_high) 
