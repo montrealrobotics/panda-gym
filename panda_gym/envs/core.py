@@ -193,6 +193,9 @@ class Task(ABC):
     def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}) -> np.ndarray:
         """Compute reward associated to the achieved and the desired goal."""
 
+    def check_object_constrain(self, name='object'):
+        object_position = self.sim.get_base_position(name)
+        return np.logical_and(object_position > self.obj_range_low, object_position < self.obj_range_high).any()
 
 class RobotTaskEnv(gym.Env):
     """Robotic task goal env, as the junction of a task and a robot.
