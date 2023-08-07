@@ -98,4 +98,4 @@ class Push(Task):
 
     def check_object_constrain(self, name='object'):
         object_position = self.sim.get_base_position(name)
-        return (object_position > self.obj_range_low) and (object_position < self.obj_range_high) 
+        return np.logical_and(object_position > self.obj_range_low, object_position < self.obj_range_high).any()
