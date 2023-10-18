@@ -195,7 +195,10 @@ class Task(ABC):
 
     def check_object_constrain(self, name='object'):
         object_position = self.sim.get_base_position(name)
-        return np.logical_and(object_position > self.obj_range_low, object_position < self.obj_range_high).any()
+        if (object_position[:-1] < self.obj_range_low[0]).any() or (object_position[:-1] > self.obj_range_high[0]).any():
+            return False
+        else:
+            return True
 
 class RobotTaskEnv(gym.Env):
     """Robotic task goal env, as the junction of a task and a robot.
