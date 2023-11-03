@@ -236,6 +236,8 @@ class RobotTaskEnv(gym.Env):
         self.metadata["render_fps"] = 1 / self.sim.dt
         self.robot = robot
         self.task = task
+        self.total_goals = 0
+        self.success = False
         observation, _ = self.reset()  # required for init; seed can be changed later
         observation_shape = observation["observation"].shape
         achieved_goal_shape = observation["achieved_goal"].shape
@@ -280,15 +282,18 @@ class RobotTaskEnv(gym.Env):
         }
 
     def reset(
-        self, seed: Optional[int] = None, options: Optional[dict] = None
-    ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+        self, seed: Optional[int] = None, options: Optional[dict] = None,
+    in_ep = False) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
         super().reset(seed=seed, options=options)
+        self.success = 0
+        if not in_ep:
+            self.total_goals = 0
         self.task.np_random, seed = seeding.np_random(seed)
         with self.sim.no_rendering():
             self.robot.reset()
             self.task.reset()
         observation = self._get_obs()
-        info = {"is_success": self.task.is_success(observation["achieved_goal"], self.task.get_goal())}
+        info = {"is_success": self.task.is_success(observation["achieved_goal"], self.task.get_goal()), "cum_goal_met": self.total_goals}
         return observation, info
 
     def save_state(self) -> int:
@@ -320,21 +325,28 @@ class RobotTaskEnv(gym.Env):
         self.sim.remove_state(state_id)
 
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
+        if self.success:
+            self.reset(in_ep=True)
         self.robot.set_action(action)
         self.sim.step()
         observation = self._get_obs()
+        reward = 0
         if not self.task.check_object_constrain():
             terminated = True  # terminate immediately if constraint is violated 
             cost = 1
             truncated = False
-            info = {"is_success": False, 'cost': 1.0}
-            reward = -10.0
+            info = {"is_success": False, 'cost': 1.0, "cum_goal_met": self.total_goals}
+            # reward = -10.0
         else:
             # An episode is terminated iff the agent has reached the target
-            terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
-            truncated = False
-            info = {"is_success": terminated, 'cost': 0.0}
-            reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+            self.success = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
+            truncated, terminated = False, False
+            self.total_goals += self.success
+            info = {"is_success": self.success, 'cost': 0.0, "cum_goal_met": self.total_goals}
+            
+            if self.success:
+                reward = 10 #float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:
