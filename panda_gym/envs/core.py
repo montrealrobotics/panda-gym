@@ -328,13 +328,13 @@ class RobotTaskEnv(gym.Env):
             cost = 1
             truncated = False
             info = {"is_success": False, 'cost': 1.0}
-            reward = -10.0
+            #reward = 0 #-10.0
         else:
             # An episode is terminated iff the agent has reached the target
             terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
             truncated = False
             info = {"is_success": terminated, 'cost': 0.0}
-            reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+        reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:
