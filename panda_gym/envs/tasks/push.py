@@ -19,16 +19,19 @@ class Push(Task):
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
         self.object_size = 0.04
+        self.obj_xy_range = obj_xy_range
         self.goal_range_low = np.array([-goal_xy_range / 2, -goal_xy_range / 2, 0])
         self.goal_range_high = np.array([goal_xy_range / 2, goal_xy_range / 2, 0])
         self.obj_range_low = np.array([-obj_xy_range / 2, -obj_xy_range / 2, 0])
         self.obj_range_high = np.array([obj_xy_range / 2, obj_xy_range / 2, 0])
+        self.obj_range_high_min = np.array([obj_xy_range / 2 - 0.05, obj_xy_range / 2 - 0.05, 0])
+        self.obj_range_low_min = np.array([-obj_xy_range / 2 + 0.05, -obj_xy_range / 2 + 0.05, 0])
         with self.sim.no_rendering():
             self._create_scene()
 
     def _create_scene(self) -> None:
         self.sim.create_plane(z_offset=-0.4)
-        self.sim.create_table(length=1.1, width=0.7, height=0.4, x_offset=-0.3)
+        self.sim.create_table(length=self.table_length, width=self.table_width, height=0.4, x_offset=-0.3)
         self.sim.create_box(
             body_name="object",
             half_extents=np.ones(3) * self.object_size / 2,
@@ -81,7 +84,12 @@ class Push(Task):
     def _sample_object(self) -> np.ndarray:
         """Randomize start position of object."""
         object_position = np.array([0.0, 0.0, self.object_size / 2])
-        noise = self.np_random.uniform(self.obj_range_low, self.obj_range_high)
+        if self.np_random.random() < 0.5:
+            # Forward End
+            noise = [self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), 0]
+        else:
+            # Sides
+            noise = [self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), self.np_random.choice([1, -1]) * self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), 0]
         object_position += noise
         return object_position
 

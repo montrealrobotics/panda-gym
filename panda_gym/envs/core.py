@@ -165,6 +165,8 @@ class Task(ABC):
     def __init__(self, sim: PyBullet) -> None:
         self.sim = sim
         self.goal = None
+        self.table_width = 0.7
+        self.table_length = 1.1
 
     @abstractmethod
     def reset(self) -> None:
@@ -273,6 +275,14 @@ class RobotTaskEnv(gym.Env):
             "desired_goal": self.task.get_goal().astype(np.float32),
         }
 
+
+    def cost(self, name='object'):
+        object_position = self.sim.get_base_position(name)
+        if (np.abs(object_position[0]) > 0.25 or np.abs(object_position[1]) > 0.35):
+            return True
+        else:
+            return False
+
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict] = None
     ) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
@@ -320,7 +330,8 @@ class RobotTaskEnv(gym.Env):
         # An episode is terminated iff the agent has reached the target
         terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
         truncated = False
-        info = {"is_success": terminated}
+        cost = int(self.cost())
+        info = {"is_success": terminated, "cum_cost":0, "cost": cost}
         reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
         return observation, reward, terminated, truncated, info
 
