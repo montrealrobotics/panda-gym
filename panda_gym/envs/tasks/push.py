@@ -58,7 +58,7 @@ class Push(Task):
         object_angular_velocity = np.array(self.sim.get_base_angular_velocity("object"))
         if self.safety_info:
             safety_info = np.array([np.min(np.array([0.25 - np.abs(object_position[0]), 0.35 - np.abs(object_position[1])]))])
-            print(object_position, safety_info)
+            # print(object_position, safety_info)
             observation = np.concatenate(
                 [
                     object_position,
