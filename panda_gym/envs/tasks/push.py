@@ -11,12 +11,14 @@ class Push(Task):
         self,
         sim,
         reward_type="sparse",
+        safety_info=False,
         distance_threshold=0.05,
         goal_xy_range=0.3,
         obj_xy_range=0.3,
     ) -> None:
         super().__init__(sim)
         self.reward_type = reward_type
+        self.safety_info = safety_info
         self.distance_threshold = distance_threshold
         self.object_size = 0.04
         self.obj_xy_range = obj_xy_range
@@ -54,14 +56,27 @@ class Push(Task):
         object_rotation = np.array(self.sim.get_base_rotation("object"))
         object_velocity = np.array(self.sim.get_base_velocity("object"))
         object_angular_velocity = np.array(self.sim.get_base_angular_velocity("object"))
-        observation = np.concatenate(
-            [
-                object_position,
-                object_rotation,
-                object_velocity,
-                object_angular_velocity,
-            ]
-        )
+        if self.safety_info:
+            safety_info = np.array([np.min(np.array([0.25 - np.abs(object_position[0]), 0.35 - np.abs(object_position[1])]))])
+            print(object_position, safety_info)
+            observation = np.concatenate(
+                [
+                    object_position,
+                    object_rotation,
+                    object_velocity,
+                    object_angular_velocity,
+                    safety_info
+                ]
+            )
+        else:
+            observation = np.concatenate(
+                [
+                    object_position,
+                    object_rotation,
+                    object_velocity,
+                    object_angular_velocity,
+                ]
+            )
         return observation
 
     def get_achieved_goal(self) -> np.ndarray:
@@ -84,14 +99,10 @@ class Push(Task):
     def _sample_object(self) -> np.ndarray:
         """Randomize start position of object."""
         object_position = np.array([0.0, 0.0, self.object_size / 2])
-        if self.np_random.random() < 0.5:
-            # Forward End
-            noise = [self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), 0]
-        else:
-            # Sides
-            noise = [self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), self.np_random.choice([1, -1]) * self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), 0]
+        noise = self.np_random.uniform(self.obj_range_low, self.obj_range_high)
         object_position += noise
         return object_position
+            
 
     def is_success(self, achieved_goal: np.ndarray, desired_goal: np.ndarray) -> np.ndarray:
         d = distance(achieved_goal, desired_goal)

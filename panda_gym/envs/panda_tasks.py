@@ -138,6 +138,7 @@ class PandaPushEnv(RobotTaskEnv):
         self,
         render_mode: str = "rgb_array",
         reward_type: str = "sparse",
+        safety_info: bool = False,
         control_type: str = "ee",
         renderer: str = "Tiny",
         render_width: int = 720,
@@ -150,7 +151,7 @@ class PandaPushEnv(RobotTaskEnv):
     ) -> None:
         sim = PyBullet(render_mode=render_mode, renderer=renderer)
         robot = Panda(sim, block_gripper=True, base_position=np.array([-0.6, 0.0, 0.0]), control_type=control_type)
-        task = Push(sim, reward_type=reward_type)
+        task = Push(sim, safety_info=safety_info, reward_type=reward_type)
         super().__init__(
             robot,
             task,
