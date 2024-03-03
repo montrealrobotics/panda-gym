@@ -7,6 +7,7 @@ from gymnasium import spaces
 from gymnasium.utils import seeding
 
 from panda_gym.pybullet import PyBullet
+from panda_gym.utils import distance
 
 
 class PyBulletRobot(ABC):
@@ -292,6 +293,9 @@ class RobotTaskEnv(gym.Env):
             self.robot.reset()
             self.task.reset()
         observation = self._get_obs()
+        self.task.last_dist_obj_norm = distance(observation["observation"][:3], observation["achieved_goal"])
+        self.task.last_d_norm = distance(observation["achieved_goal"], observation["desired_goal"])
+        self.task.last_d, self.task.last_dist_obj = 1., 1.
         info = {"is_success": self.task.is_success(observation["achieved_goal"], self.task.get_goal())}
         return observation, info
 
@@ -332,7 +336,7 @@ class RobotTaskEnv(gym.Env):
         truncated = False
         cost = int(self.cost())
         info = {"is_success": terminated, "cum_cost":0, "cost": cost}
-        reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+        reward = float(self.task.compute_reward(observation, self.task.get_goal(), info))
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:

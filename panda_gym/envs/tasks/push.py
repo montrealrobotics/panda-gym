@@ -26,6 +26,11 @@ class Push(Task):
         self.obj_range_high = np.array([obj_xy_range / 2, obj_xy_range / 2, 0])
         self.obj_range_high_min = np.array([obj_xy_range / 2 - 0.05, obj_xy_range / 2 - 0.05, 0])
         self.obj_range_low_min = np.array([-obj_xy_range / 2 + 0.05, -obj_xy_range / 2 + 0.05, 0])
+        self.last_dist_obj = None
+        self.last_d = None
+        self.last_dist_obj_norm = None
+        self.last_d_norm = None 
+
         with self.sim.no_rendering():
             self._create_scene()
 
@@ -74,22 +79,26 @@ class Push(Task):
         self.sim.set_base_pose("target", self.goal, np.array([0.0, 0.0, 0.0, 1.0]))
         self.sim.set_base_pose("object", object_position, np.array([0.0, 0.0, 0.0, 1.0]))
 
-    def _sample_goal(self) -> np.ndarray:
+    def _sample_object(self) -> np.ndarray:
         """Randomize goal."""
         goal = np.array([0.0, 0.0, self.object_size / 2])  # z offset for the cube center
         noise = self.np_random.uniform(self.goal_range_low, self.goal_range_high)
         goal += noise
         return goal
 
-    def _sample_object(self) -> np.ndarray:
+    def _sample_goal(self) -> np.ndarray:
         """Randomize start position of object."""
         object_position = np.array([0.0, 0.0, self.object_size / 2])
         if self.np_random.random() < 0.5:
             # Forward End
-            noise = [self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), 0]
+            noise = [self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2),\
+                         self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), 0]
         else:
             # Sides
-            noise = [self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2), self.np_random.choice([1, -1]) * self.np_random.uniform(self.obj_xy_range / 2 - 0.05, self.obj_xy_range/2), 0]
+            noise = [self.np_random.uniform(-self.obj_xy_range/2, self.obj_xy_range/2),\
+                    self.np_random.choice([1, -1]) * self.np_random.uniform(self.obj_xy_range / 2 - 0.05,\
+                    self.obj_xy_range/2), 0]
+
         object_position += noise
         return object_position
 
@@ -97,9 +106,24 @@ class Push(Task):
         d = distance(achieved_goal, desired_goal)
         return np.array(d < self.distance_threshold, dtype=bool)
 
-    def compute_reward(self, achieved_goal, desired_goal, info: Dict[str, Any]) -> np.ndarray:
-        d = distance(achieved_goal, desired_goal)
-        if self.reward_type == "sparse":
-            return -np.array(d > self.distance_threshold, dtype=np.float32)
-        else:
-            return -d.astype(np.float32)
+    def compute_reward(self, observation, desired_goal, info: Dict[str, Any]) -> np.ndarray:
+        d = distance(observation["achieved_goal"], desired_goal) / self.last_d_norm
+        obj = self.get_achieved_goal()
+        # print(observation["observation"])
+        d_obj = distance(observation["observation"][:3], obj) / self.last_dist_obj_norm
+        reward = self.last_dist_obj - d_obj
+        self.last_dist_obj = d_obj
+
+
+        reward +=  (self.last_d - d)
+        self.last_d = d
+        # if self.reward_type == "sparse":
+        #     return reward_dist-np.array(d > self.distance_threshold, dtype=np.float32)
+        # else:
+        #     return reward_dist-d.astype(np.float32)
+
+        if d < self.distance_threshold:
+            reward += 10
+
+
+        return reward
