@@ -295,7 +295,7 @@ class RobotTaskEnv(gym.Env):
         observation = self._get_obs()
         self.task.last_dist_obj_norm = distance(observation["observation"][:3], observation["achieved_goal"])
         self.task.last_d_norm = distance(observation["achieved_goal"], observation["desired_goal"])
-        self.task.last_d, self.task.last_dist_obj = 1., 1.
+        self.task.last_d, self.task.last_dist_obj = self.task.last_d_norm, self.task.last_dist_obj_norm
         info = {"is_success": self.task.is_success(observation["achieved_goal"], self.task.get_goal())}
         return observation, info
 

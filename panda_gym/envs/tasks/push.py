@@ -107,15 +107,15 @@ class Push(Task):
         return np.array(d < self.distance_threshold, dtype=bool)
 
     def compute_reward(self, observation, desired_goal, info: Dict[str, Any]) -> np.ndarray:
-        d = distance(observation["achieved_goal"], desired_goal) / self.last_d_norm
+        d = distance(observation["achieved_goal"], desired_goal)
         obj = self.get_achieved_goal()
         # print(observation["observation"])
-        d_obj = distance(observation["observation"][:3], obj) / self.last_dist_obj_norm
-        reward = self.last_dist_obj - d_obj
+        d_obj = distance(observation["observation"][:3], obj)
+        reward = (self.last_dist_obj - d_obj) / self.last_dist_obj_norm 
         self.last_dist_obj = d_obj
 
 
-        reward +=  (self.last_d - d)
+        reward +=  (self.last_d - d) / self.last_d_norm
         self.last_d = d
         # if self.reward_type == "sparse":
         #     return reward_dist-np.array(d > self.distance_threshold, dtype=np.float32)
