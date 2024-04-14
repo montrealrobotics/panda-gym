@@ -10,7 +10,7 @@ class Stack(Task):
     def __init__(
         self,
         sim,
-        reward_type="sparse",
+        reward_type="dense",
         distance_threshold=0.1,
         goal_xy_range=0.3,
         obj_xy_range=0.3,

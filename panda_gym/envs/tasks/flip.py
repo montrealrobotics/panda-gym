@@ -12,7 +12,7 @@ class Flip(Task):
     def __init__(
         self,
         sim: PyBullet,
-        reward_type: str = "sparse",
+        reward_type: str = "dense",
         distance_threshold: float = 0.2,
         obj_xy_range: float = 0.3,
     ) -> None:

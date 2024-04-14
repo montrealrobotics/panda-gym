@@ -10,7 +10,7 @@ class Slide(Task):
     def __init__(
         self,
         sim,
-        reward_type="sparse",
+        reward_type="dense",
         distance_threshold=0.05,
         goal_xy_range=0.3,
         goal_x_offset=0.4,
@@ -48,6 +48,13 @@ class Slide(Task):
             position=np.array([0.0, 0.0, self.object_size / 2]),
             rgba_color=np.array([0.1, 0.9, 0.1, 0.3]),
         )
+
+    def cost(self, name='object'):
+        object_position = self.sim.get_base_position(name)
+        if (np.abs(object_position[0]) > 0.25 or np.abs(object_position[1]) > 0.35):
+            return True
+        else:
+            return False
 
     def get_obs(self) -> np.ndarray:
         # position, rotation of the object

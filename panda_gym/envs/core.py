@@ -193,12 +193,12 @@ class Task(ABC):
     def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}) -> np.ndarray:
         """Compute reward associated to the achieved and the desired goal."""
 
-    def check_object_constrain(self, name='object'):
+    def cost(self, name='object'):
         object_position = self.sim.get_base_position(name)
-        if (object_position[:-1] < self.obj_range_low[0]).any() or (object_position[:-1] > self.obj_range_high[0]).any():
-            return False
-        else:
+        if (np.abs(object_position[0]) > 0.25 or np.abs(object_position[1]) > 0.35):
             return True
+        else:
+            return False
 
 class RobotTaskEnv(gym.Env):
     """Robotic task goal env, as the junction of a task and a robot.
@@ -268,6 +268,9 @@ class RobotTaskEnv(gym.Env):
                 pitch=self.render_pitch,
             )
 
+        self.old_cost = 0
+        self.old_success = 0
+
     def _get_obs(self) -> Dict[str, np.ndarray]:
         robot_obs = self.robot.get_obs().astype(np.float32)  # robot state
         task_obs = self.task.get_obs().astype(np.float32)  # object position, velococity, etc...
@@ -288,7 +291,9 @@ class RobotTaskEnv(gym.Env):
             self.robot.reset()
             self.task.reset()
         observation = self._get_obs()
-        info = {"is_success": self.task.is_success(observation["achieved_goal"], self.task.get_goal())}
+        self.old_cost = 0
+        self.old_success = 0
+        info = {"is_success": int(self.task.is_success(observation["achieved_goal"], self.task.get_goal())), "cost": 0}
         return observation, info
 
     def save_state(self) -> int:
@@ -319,23 +324,53 @@ class RobotTaskEnv(gym.Env):
         self._saved_goal.pop(state_id)
         self.sim.remove_state(state_id)
 
+    # def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
+    #     self.robot.set_action(action)
+    #     self.sim.step()
+    #     observation = self._get_obs()
+    #     if not self.task.check_object_constrain():
+    #         terminated = True  # terminate immediately if constraint is violated 
+    #         cost = 1
+    #         truncated = False
+    #         info = {"is_success": False, 'cost': 1.0}
+    #         #reward = 0 #-10.0
+    #     else:
+    #         # An episode is terminated iff the agent has reached the target
+    #         terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
+    #         truncated = False
+    #         info = {"is_success": terminated, 'cost': 0.0}
+    #     reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+    #     return observation, reward, terminated, truncated, info
+
     def step(self, action: np.ndarray) -> Tuple[Dict[str, np.ndarray], float, bool, bool, Dict[str, Any]]:
         self.robot.set_action(action)
         self.sim.step()
         observation = self._get_obs()
-        if not self.task.check_object_constrain():
-            terminated = True  # terminate immediately if constraint is violated 
-            cost = 1
-            truncated = False
-            info = {"is_success": False, 'cost': 1.0}
-            #reward = 0 #-10.0
+        # An episode is terminated iff the agent has reached the target
+        success = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
+
+        truncated = False
+        cost = 0
+        if not self.old_cost:
+            cost = int(self.task.cost())
+            self.old_cost = cost
+
+        if success and not self.old_success:
+            success_ = 1
         else:
-            # An episode is terminated iff the agent has reached the target
-            terminated = bool(self.task.is_success(observation["achieved_goal"], self.task.get_goal()))
-            truncated = False
-            info = {"is_success": terminated, 'cost': 0.0}
-        reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
-        return observation, reward, terminated, truncated, info
+            success_ = 0
+
+        info = {"is_success": int(success_), "cum_cost":0, "cost": cost}
+
+        reward = - np.linalg.norm(observation["achieved_goal"] - self.task.get_goal())
+        if success:
+            reward += 10
+
+        self.old_success = success
+        
+        # reward = float(self.task.compute_reward(observation["achieved_goal"], self.task.get_goal(), info))
+        return observation, reward, False, truncated, info
+
 
     def close(self) -> None:
         self.sim.close()

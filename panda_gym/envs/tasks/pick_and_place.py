@@ -11,7 +11,7 @@ class PickAndPlace(Task):
     def __init__(
         self,
         sim: PyBullet,
-        reward_type: str = "sparse",
+        reward_type: str = "dense",
         distance_threshold: float = 0.05,
         goal_xy_range: float = 0.3,
         goal_z_range: float = 0.2,
